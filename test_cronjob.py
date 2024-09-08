@@ -78,3 +78,19 @@ def test_valid_cronjob_table():
         "day of week   1 2 3 4 5\n"
         "command       /usr/bin/find"
     )
+
+
+def test_invalid_range():
+    with pytest.raises(Exception) as exc_info:
+        list(cronjob.get_cron_values("*/0", 0, 60))
+    assert str(exc_info.value) == ("Zero interval cannot be defined */0")
+
+
+def test_invalid_cronjob_table():
+    expression = "*/15 0 * 1-5 /usr/bin/find"
+    with pytest.raises(Exception) as exc_info:
+        cronjob.get_cron_table(expression)
+    assert str(exc_info.value) == (
+        "Invalid cron expression: */15 0 * 1-5 /usr/bin/find. "
+        "Number of arguments provided: 5 should not be less than 6"
+    )
