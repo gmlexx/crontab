@@ -24,41 +24,64 @@ def parse_cron_arg(arg: str) -> tuple[str, int]:
     return (value, int(every))
 
 
-def parse_cron_arg_values(values: str) -> Generator[tuple[str, str], None, None]:
+def parse_cron_arg_values(values: str, every: int) -> Generator[tuple[str, str], None, None]:
     """Parse values part of cron argument and returns allowed ranges of values"""
     items = values.split(",")
     for item in items:
         if "-" not in item:
-            yield (item, item)
+            if every == 1:
+                yield (item, item)
+            else:
+                yield (item, "*")
         else:
             from_value, to_value = item.split("-")
             yield (from_value, to_value)
 
+def get_int_value(text_to_values_dict, value: str) -> int:
+    """Get int value by text if available"""
+    int_value = text_to_values_dict.get(value.lower())
+    if not int_value:
+        int_value = int(value)
+    return int_value
 
-def match_ranges(value: int, values_ranges: list[tuple[str, str]]):
+
+def match_ranges(value: int, values_ranges: list[tuple[str, str]], text_to_values = None):
     """Returns True if the value matches any of values range in the list"""
-    for from_value, to_value in values_ranges:
+    text_to_values_dict = {} if not text_to_values else text_to_values
+    for values_range in values_ranges:
+        from_match = False
+        to_match = False
+        from_value, to_value = values_range
+        print(f"Values_range: {values_range}, from: {from_value}, to: {to_value}")
         if from_value == "*":
-            return True
-        if int(from_value) <= value <= int(to_value):
+            from_match = True
+        else:
+            from_int_value = get_int_value(text_to_values_dict, from_value)
+            from_match = from_int_value <= value
+        if to_value == "*":
+            to_match = True
+        else:
+            to_int_value = get_int_value(text_to_values_dict, to_value)
+            to_match = value <= to_int_value
+        if from_match and to_match:
             return True
     return False
 
 
 def get_cron_values(
-    cron_arg: str, range_from: int, range_to: int
+    cron_arg: str, range_from: int, range_to: int, text_to_values = None
 ) -> Generator[str, None, None]:
     """Returns minutes according to cronjob argument"""
     values, every = parse_cron_arg(cron_arg)
-    values_ranges = list(parse_cron_arg_values(values))
-    for index, value in enumerate(range(range_from, range_to)):
-        if match_ranges(value, values_ranges) and index % every == 0:
+    values_ranges = list(parse_cron_arg_values(values, every))
+    for index, value in enumerate(list(range(range_from, range_to))):
+        if match_ranges(value, values_ranges, text_to_values) and index % every == 0:
             yield str(value)
 
 
-def add_table_values(cron_arg: str, range_from: int, range_to: int) -> str:
+def add_table_values(cron_arg: str, range_from: int, range_to: int, text_to_values = None) -> str:
     """Format cron values for the table output"""
-    return " ".join(get_cron_values(cron_arg, range_from, range_to)) + "\n"
+    return " ".join(get_cron_values(cron_arg, range_from, range_to, text_to_values)) + "\n"
 
 
 def get_cron_table(arg: str) -> str:
@@ -72,7 +95,7 @@ def get_cron_table(arg: str) -> str:
     table = "minute        " + add_table_values(cron_args[0], 0, 60)
     table += "hour          " + add_table_values(cron_args[1], 0, 24)
     table += "day of month  " + add_table_values(cron_args[2], 1, 32)
-    table += "month         " + add_table_values(cron_args[3], 1, 13)
+    table += "month         " + add_table_values(cron_args[3], 1, 13, {"jan": 1, "feb": 2})
     table += "day of week   " + add_table_values(cron_args[4], 0, 7)
     table += "command       " + " ".join(cron_args[5:])
     return table

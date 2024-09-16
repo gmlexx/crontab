@@ -40,9 +40,9 @@ def test_valid_cron_argument_parsing():
 
 
 def test_valid_cron_argument_values_parsing():
-    assert list(cronjob.parse_cron_arg_values("*")) == [("*", "*")]
-    assert list(cronjob.parse_cron_arg_values("1-15")) == [("1", "15")]
-    assert list(cronjob.parse_cron_arg_values("1-15,20")) == [
+    assert list(cronjob.parse_cron_arg_values("*", 1)) == [("*", "*")]
+    assert list(cronjob.parse_cron_arg_values("1-15", 1)) == [("1", "15")]
+    assert list(cronjob.parse_cron_arg_values("1-15,20", 1)) == [
         ("1", "15"),
         ("20", "20"),
     ]
@@ -53,15 +53,25 @@ def test_valid_minutes():
     assert list(minutes) == ["0", "15", "30", "45"]
 
 
+def test_valid_minutes_range():
+    minutes = cronjob.get_cron_values("20-30/5", 0, 60)
+    assert list(minutes) == ["20", "25", "30"]
+
+def test_valid_hours_range():
+    minutes = cronjob.get_cron_values("10/2", 0, 24)
+    assert list(minutes) == ["10", "12", "14", "16", "18", "20", "22"]
+
 def test_valid_hours():
     hours = cronjob.get_cron_values("*/6", 0, 24)
     assert list(hours) == ["0", "6", "12", "18"]
-
 
 def test_valid_months():
     months = cronjob.get_cron_values("1,12", 1, 13)
     assert list(months) == ["1", "12"]
 
+def test_valid_months_as_text():
+    months = cronjob.get_cron_values("JAN-MAR", 1, 13, {"jan": 1, "feb": 2, "mar": 3})
+    assert list(months) == ["1","2", "3"]
 
 def test_valid_days_of_week():
     days_of_week = cronjob.get_cron_values("*/2", 0, 7)
